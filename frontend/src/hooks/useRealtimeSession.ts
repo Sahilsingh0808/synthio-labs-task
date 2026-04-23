@@ -101,7 +101,13 @@ export function useRealtimeSession(deckId: string | null): RealtimeSessionHandle
           setAgentStatus("listening");
           if (pendingEndRef.current) {
             pendingEndRef.current = false;
-            window.setTimeout(() => stop(), 400);
+            // response.done fires when the server is done SENDING audio, but
+            // the browser still has chunks queued to play. Wait for the last
+            // scheduled chunk to finish before closing the session, otherwise
+            // the farewell audio is cut off mid-word.
+            const remainingMs = audio.getPlaybackRemainingMs();
+            const waitMs = Math.max(400, remainingMs + 600);
+            window.setTimeout(() => stop(), waitMs);
           }
           break;
         }

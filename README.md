@@ -254,6 +254,8 @@ synthio-labs-task/
 ## Further reading
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — full architecture and workflow walkthrough: every event, every design decision, every trade-off.
+- [`docs/PRODUCTION_MIGRATION.md`](docs/PRODUCTION_MIGRATION.md) — what would need to change to run this as a product (tiered refactors, effort estimates, migration sequence, cost envelope).
+- [`deploy/README.md`](deploy/README.md) — end-to-end server deployment runbook (TLS, certbot, firewall, systemd).
 - [`backend/README.md`](backend/README.md) — backend module map and endpoint contract.
 - [`frontend/README.md`](frontend/README.md) — frontend module map and audio pipeline.
 

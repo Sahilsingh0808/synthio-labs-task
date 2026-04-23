@@ -835,12 +835,14 @@ Unchanged from v1. API key isolation, CORS scoping, signed-token migration path 
 
 ## 20. Trade-offs and production migration paths
 
+Summary table of the prototype-vs-production choices. For the full engineering RFC — priority tiers, effort estimates per item, concrete implementation approaches, a 14-day migration sequence, and per-user cost estimates — see [**`PRODUCTION_MIGRATION.md`**](PRODUCTION_MIGRATION.md).
 
 | Trade-off made                          | Why now                                                       | Production path                                                                        |
 | --------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | `ScriptProcessorNode` for audio capture | Works on localhost without worker file or HTTPS               | `AudioWorklet` off the main thread                                                     |
 | In-memory deck store                    | Zero infra                                                    | Redis session state, Postgres for user-owned decks                                     |
 | Deck embedded in system prompt          | Decks are small (≤12 slides × ~150 tokens), no retrieval step | Tool-callable `get_slide(index)` + vector search for long decks                        |
+| HTTP Basic Auth at nginx                | Soft gate for the demo                                        | Real user accounts + OAuth + JWT + one-time signed WS tickets                          |
 | No auth on `/ws/{deck_id}`              | Unguessable 96-bit deck IDs suffice locally                   | Signed short-lived tokens on `/api/decks/generate`, verified on upgrade                |
 | PDF length cap at 20 000 chars          | Predictable spend                                             | Map-reduce chunking for long documents                                                 |
 | Helvetica-only PDF fonts                | Zero external font deps                                       | Register Inter TTF for stricter visual parity with UI                                  |
@@ -849,6 +851,10 @@ Unchanged from v1. API key isolation, CORS scoping, signed-token migration path 
 | No reconnect in `useRealtimeSession`    | Session-scoped                                                | Exponential backoff with state replay, only when the session wasn't explicitly stopped |
 | Continuous flow baked into prompt       | Simple, reliable                                              | Optional "stop after each slide" mode toggled via session param                        |
 | Deck voice fixed per env                | One voice is enough to evaluate                               | Per-deck voice selection via `session.update`                                          |
+| Synchronous deck generation             | 15-40 s on the request path is acceptable for a demo          | Background jobs (ARQ / Celery) + streaming result via SSE or WS                        |
+| No rate limiting                        | Single-user demo                                              | Per-user quotas + token bucket (critical — realtime spend is unbounded)                |
+| Unstructured logs via `docker logs`     | Easy to tail                                                  | JSON logs + Prometheus + OpenTelemetry + Sentry                                        |
+| No tests                                | Prototype velocity                                            | pytest (backend) + Vitest (frontend) + Playwright (E2E), CI gating                     |
 
 
 ---

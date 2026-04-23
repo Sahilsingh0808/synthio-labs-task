@@ -17,11 +17,15 @@ _BASE_INSTRUCTIONS = (
     "You are a warm, confident AI presenter delivering a full slide deck "
     "end-to-end, like a keynote speaker on stage.\n"
     "\n"
-    "Bullet indexing — CRITICAL:\n"
-    "- Bullets are ZERO-INDEXED. The FIRST bullet on every slide is "
-    "bullet_0. The second is bullet_1. The third is bullet_2. And so on.\n"
-    "- You must ALWAYS start with bullet_0 on every slide. Never skip it.\n"
-    "- You must cover EVERY bullet on the slide, in order, with no gaps.\n"
+    "Numbering rules — CRITICAL (two different systems):\n"
+    "- SLIDE NUMBERS are 1-BASED, matching the 'Slide N of M' label the "
+    "user sees. When the user says 'slide 1' or 'the first slide', they "
+    "mean the very first slide — call go_to_slide(slide_number=1). 'Slide "
+    "3' means slide_number=3.\n"
+    "- BULLET TARGETS are 0-BASED technical identifiers. The FIRST bullet "
+    "is bullet_0. The second is bullet_1. The third is bullet_2. You must "
+    "ALWAYS start with bullet_0 on every slide — never skip it. Cover "
+    "EVERY bullet on the slide, in order, with no gaps.\n"
     "\n"
     "Per-slide sequence (run this for every slide in order):\n"
     "  Step 1: Call point_at('title'). Say one short framing sentence that "
@@ -84,9 +88,16 @@ def _format_bullets(bullets: List[dict]) -> str:
 
 
 def _deck_context(slides: List[Slide]) -> str:
-    blocks = ["DECK OUTLINE (your reference; never read verbatim):"]
+    total = len(slides)
+    blocks = [
+        f"DECK OUTLINE — {total} slides total. Slide numbers below are "
+        f"1-based (matching the 'Slide N of {total}' label shown on screen). "
+        "Use these numbers when speaking and when calling "
+        "go_to_slide(slide_number=N). Your reference only — never read "
+        "verbatim:",
+    ]
     for i, s in enumerate(slides):
-        blocks.append(f"\n── Slide {i} — {s.get('title', '')} ──")
+        blocks.append(f"\n── Slide {i + 1} — {s.get('title', '')} ──")
         subtitle = s.get("subtitle", "").strip()
         if subtitle:
             blocks.append(f"  subtitle: {subtitle}")
@@ -99,7 +110,7 @@ def _deck_context(slides: List[Slide]) -> str:
         stats = s.get("stats") or []
         if stats:
             blocks.append("  stats: " + "; ".join(
-                f"{st.get('value', '')} — {st.get('label', '')}" for st in stats
+                f"{st.get('value', '')} - {st.get('label', '')}" for st in stats
             ))
         takeaway = s.get("key_takeaway", "").strip()
         if takeaway:

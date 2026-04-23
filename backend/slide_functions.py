@@ -48,15 +48,18 @@ def functions_schema(max_bullets: int) -> list[dict]:
             "type": "function",
             "name": "go_to_slide",
             "description": (
-                "Jump directly to a slide by 0-based index. Use when the user asks "
-                "about a topic that lives on a known slide."
+                "Jump directly to a specific slide. The slide_number is "
+                "1-BASED to match what the user sees ('Slide 3 of 6' in the UI). "
+                "Examples: user says 'go to slide 1' or 'the first slide' → "
+                "slide_number=1. User says 'slide 4' → slide_number=4. Never "
+                "pass 0 or a larger number than the last slide."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "index": {"type": "integer", "minimum": 0},
+                    "slide_number": {"type": "integer", "minimum": 1},
                 },
-                "required": ["index"],
+                "required": ["slide_number"],
             },
         },
         {
@@ -160,7 +163,13 @@ async def handle_function_call(
         }
 
     if name == "go_to_slide":
-        new_index = navigator.go_to(int(args.get("index", 0)))
+        # Accept both the new 1-based ``slide_number`` and the legacy 0-based
+        # ``index`` so old in-flight sessions don't break on deploy.
+        if "slide_number" in args:
+            target_index = int(args.get("slide_number", 1)) - 1
+        else:
+            target_index = int(args.get("index", 0))
+        new_index = navigator.go_to(target_index)
         return {
             "browser_event": {
                 "type": "slide_change",
@@ -169,7 +178,7 @@ async def handle_function_call(
             },
             "tool_output": {
                 "success": True,
-                "new_index": new_index,
+                "slide_number": new_index + 1,
                 "title": navigator.current().get("title", ""),
             },
         }

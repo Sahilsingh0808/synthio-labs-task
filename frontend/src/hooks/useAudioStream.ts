@@ -9,6 +9,8 @@ export interface AudioStreamHandle {
   playChunk: (base64: string) => void;
   stopPlayback: () => void;
   getAnalyser: () => AnalyserNode | null;
+  /** Milliseconds of audio still scheduled to play after ``ctx.currentTime``. */
+  getPlaybackRemainingMs: () => number;
   cleanup: () => void;
 }
 
@@ -121,6 +123,13 @@ export function useAudioStream(
 
   const getAnalyser = useCallback(() => analyserRef.current, []);
 
+  const getPlaybackRemainingMs = useCallback((): number => {
+    const ctx = ctxRef.current;
+    if (!ctx) return 0;
+    const remaining = nextPlayTimeRef.current - ctx.currentTime;
+    return Math.max(0, remaining * 1000);
+  }, []);
+
   const cleanup = useCallback(() => {
     stopPlayback();
     stopRecording();
@@ -137,5 +146,13 @@ export function useAudioStream(
     };
   }, [cleanup]);
 
-  return { startRecording, stopRecording, playChunk, stopPlayback, getAnalyser, cleanup };
+  return {
+    startRecording,
+    stopRecording,
+    playChunk,
+    stopPlayback,
+    getAnalyser,
+    getPlaybackRemainingMs,
+    cleanup,
+  };
 }
