@@ -6,5 +6,6 @@ __pycache__/
 *.pyc
 .env
 .env.local
+.env.deploy
 .DS_Store
 .vite/

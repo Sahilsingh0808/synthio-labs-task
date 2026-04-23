@@ -95,34 +95,68 @@ The OpenAI Python SDK works against Azure if you point `base_url` at the v1 comp
 
 ### Prerequisites
 
-- Python 3.11+ (3.9 works too)
-- Node.js 18+
+- Python 3.11+ (3.9 works too) **or** Docker / Docker Compose
+- Node.js 18+ (only if running the frontend outside Docker)
 - Azure OpenAI resources with a chat deployment + a Realtime deployment — or OpenAI API key with Realtime access for the fallback path.
 
-### 1. Backend
+### Option A — Docker (recommended for deployment)
 
 ```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-# edit .env with your Azure (or OpenAI) credentials
-uvicorn main:app --reload --port 8000
+cp backend/.env.example backend/.env       # fill with your Azure / OpenAI credentials
+cp .env.deploy.example .env                # optional: override compose vars
+./deploy.sh                                # build + start, wait for healthy
+# or: docker compose up --build
 ```
 
-Health check: `curl http://localhost:8000/healthz` → active realtime provider.
+> Running on a public server? See [**deploy/README.md**](deploy/README.md) — full runbook for hosting at a custom domain (`synthio-labs.jeenius.tech` is the included example), with a host-level nginx vhost, Let's Encrypt TLS, certbot auto-renewal, firewall hardening, and the same `./deploy.sh` script.
 
-### 2. Frontend
+Open `http://localhost:5173`. The frontend nginx reverse-proxies `/api` and `/ws` to the backend, so the browser only talks to a single origin and CORS never fires. The backend is also exposed on `9001` for direct `curl` / debugging; drop the port mapping in `docker-compose.yml` to keep it private behind the proxy.
+
+Under the hood:
+
+- **backend** — `python:3.11-slim-bookworm`, non-root user, built-in `/healthz` healthcheck, `uvicorn` with `--proxy-headers`.
+- **frontend** — multi-stage: `node:20-alpine` builds the SPA, `nginx:1.27-alpine` serves it. Nginx proxies `/api/*` (120s timeout — Detailed/Extensive generation takes time), `/ws/*` (WS upgrade, 3600s read timeout for long realtime sessions), and `/healthz` through to the backend.
+- **network** — the two containers share a bridge network `voiceslide`; the frontend reaches the backend by its service name.
+
+For a split deployment (frontend and backend on different domains), rebuild the frontend with explicit URLs:
 
 ```bash
+docker compose build \
+  --build-arg VITE_API_BASE=https://api.voiceslide.example.com \
+  --build-arg VITE_WS_BASE=wss://api.voiceslide.example.com \
+  frontend
+```
+
+### Gating the site behind a username + password
+
+Set `BASIC_AUTH_USERNAME` and `BASIC_AUTH_PASSWORD` (either as env vars or in the repo-root `.env`) before `docker compose up`:
+
+```bash
+BASIC_AUTH_USERNAME=alice BASIC_AUTH_PASSWORD=s3cret docker compose up --build
+```
+
+The frontend container's entrypoint generates an htpasswd file at start and enables nginx `auth_basic` on every route **except `/healthz`** (so container and load-balancer probes stay green). The browser will prompt once on first visit and cache the credentials for the session; the same credentials are automatically sent on `/api/*` fetches and `/ws/*` upgrades.
+
+To turn auth back off: unset both env vars and restart (`docker compose restart frontend`). The entrypoint resets the nginx config from its baked-in template on every boot, so toggles are clean.
+
+### Option B — Local dev (no Docker)
+
+```bash
+# backend
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env          # fill in credentials
+uvicorn main:app --reload --port 9001
+
+# frontend (another terminal)
 cd frontend
 npm install
-cp .env.example .env   # optional; defaults point at localhost:8000
-npm run dev
+cp .env.example .env          # optional; defaults to localhost:9001
+npm run dev                   # http://localhost:5173
 ```
 
-Open `http://localhost:5173`, grant mic permission, and click **Build deck**.
+Health check: `curl http://localhost:9001/healthz` → active realtime provider.
 
 ### Environment variables (backend)
 
@@ -137,7 +171,7 @@ Open `http://localhost:5173`, grant mic permission, and click **Build deck**.
 | `AZURE_OPENAI_REALTIME_API_VERSION`  | optional (`2024-10-01-preview`) | Same — skipped if endpoint already has `api-version=…`. |
 | `OPENAI_API_KEY`                     | required if Azure realtime not set | Realtime fallback. |
 | `VOICE`                              | optional (`alloy`)       | |
-| `ALLOWED_ORIGIN`                     | optional                 | CORS origin for frontend (default `http://localhost:5173`). |
+| `ALLOWED_ORIGINS`                    | optional                 | Comma-separated list of CORS origins (default `http://localhost:5173,http://localhost:3000`). Use `*` to allow any origin (same-origin nginx-proxy deploys). |
 
 ---
 

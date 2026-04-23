@@ -8,7 +8,7 @@ React 18 + Vite + TypeScript + Zustand + Tailwind + Lucide.
 
 ```bash
 npm install
-cp .env.example .env     # optional; defaults to localhost:8000
+cp .env.example .env     # optional; defaults to localhost:9001
 npm run dev
 ```
 

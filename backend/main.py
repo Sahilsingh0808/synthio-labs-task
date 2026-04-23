@@ -27,7 +27,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
-from config import ALLOWED_ORIGIN, realtime_config
+from config import ALLOWED_ORIGINS, realtime_config
 from file_analyzer import extract_text
 from pdf_export import build_deck_pdf
 from realtime_relay import RealtimeRelay
@@ -44,7 +44,7 @@ app = FastAPI(title="VoiceSlide AI", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[ALLOWED_ORIGIN, "http://localhost:3000"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -180,4 +180,4 @@ async def ws_endpoint(websocket: WebSocket, deck_id: str):
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, log_level="info")
+    uvicorn.run("main:app", host="0.0.0.0", port=9001, reload=True, log_level="info")

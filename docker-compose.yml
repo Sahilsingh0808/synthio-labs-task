@@ -1,0 +1,60 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: voiceslide-backend:latest
+    container_name: voiceslide-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      # Same-origin via nginx proxy — browser never hits the backend directly.
+      ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8080}"
+    ports:
+      # Exposed for direct curl / debugging. Set BIND_HOST=127.0.0.1 in .env
+      # on a public server so only the host nginx can reach the backend.
+      - "${BIND_HOST:+${BIND_HOST}:}9001:9001"
+    networks:
+      - voiceslide
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9001/healthz"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Empty → the built SPA uses relative URLs and hits the nginx proxy
+        # running inside this same container. Override for split deployments.
+        VITE_API_BASE: "${VITE_API_BASE:-}"
+        VITE_WS_BASE: "${VITE_WS_BASE:-}"
+    image: voiceslide-frontend:latest
+    container_name: voiceslide-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      # Set both to gate the whole site behind HTTP Basic Auth. Leave either
+      # empty to run the site open (fine for trusted local networks).
+      BASIC_AUTH_USERNAME: "${BASIC_AUTH_USERNAME:-}"
+      BASIC_AUTH_PASSWORD: "${BASIC_AUTH_PASSWORD:-}"
+    ports:
+      - "${BIND_HOST:+${BIND_HOST}:}${FRONTEND_PORT:-5173}:80"
+    networks:
+      - voiceslide
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
+
+networks:
+  voiceslide:
+    driver: bridge

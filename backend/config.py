@@ -173,7 +173,17 @@ def realtime_config() -> RealtimeConfig:
 
 VOICE: str = os.environ.get("VOICE", "alloy")
 
-ALLOWED_ORIGIN: str = os.environ.get("ALLOWED_ORIGIN", "http://localhost:5173")
+
+def _parse_origins(raw: str) -> list[str]:
+    return [o.strip() for o in raw.split(",") if o.strip()]
+
+
+# Accepts a comma-separated list for production deployments behind a reverse
+# proxy that may serve multiple domains. "*" allows all origins (fine for
+# same-origin nginx-proxy setups where CORS never actually fires).
+ALLOWED_ORIGINS: list[str] = _parse_origins(
+    os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000")
+)
 
 
 TURN_DETECTION: dict = {
