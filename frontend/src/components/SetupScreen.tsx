@@ -3,6 +3,7 @@ import {
   ArrowRight,
   FileUp,
   Loader2,
+  LogOut,
   Presentation,
   Sparkles,
   Wand2,
@@ -10,6 +11,7 @@ import {
 } from "lucide-react";
 import { generateDeck, uploadFileForDeck } from "../lib/api";
 import { usePresentationStore } from "../store/usePresentationStore";
+import { AUTH_ENABLED, useAuthStore } from "../store/useAuthStore";
 import type { TextAmount } from "../types";
 
 type Mode = "prompt" | "upload";
@@ -43,6 +45,7 @@ export function SetupScreen() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const setDeck = usePresentationStore((s) => s.setDeck);
+  const logout = useAuthStore((s) => s.logout);
 
   const onSubmit = useCallback(async () => {
     setLocalError(null);
@@ -69,13 +72,25 @@ export function SetupScreen() {
   return (
     <div className="min-h-screen flex items-center justify-center px-6 py-12 bg-ink-50">
       <div className="w-full max-w-2xl">
-        <header className="flex items-center gap-2 mb-10">
-          <div className="w-8 h-8 rounded-md bg-ink-950 text-ink-50 grid place-items-center">
-            <Presentation size={16} strokeWidth={2} />
+        <header className="flex items-center justify-between mb-10">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-md bg-ink-950 text-ink-50 grid place-items-center">
+              <Presentation size={16} strokeWidth={2} />
+            </div>
+            <span className="text-sm font-medium tracking-tight text-ink-900">
+              VoiceSlide
+            </span>
           </div>
-          <span className="text-sm font-medium tracking-tight text-ink-900">
-            VoiceSlide
-          </span>
+          {AUTH_ENABLED && (
+            <button
+              type="button"
+              onClick={logout}
+              className="inline-flex items-center gap-1.5 text-xs text-ink-500 hover:text-ink-900 transition-colors"
+            >
+              <LogOut size={12} strokeWidth={2} />
+              <span>Sign out</span>
+            </button>
+          )}
         </header>
 
         <div>

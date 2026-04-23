@@ -11,26 +11,25 @@ COPY . .
 # deploying the frontend and backend on different domains.
 ARG VITE_API_BASE=""
 ARG VITE_WS_BASE=""
+# Frontend-only soft auth gate. When VITE_AUTH_USERNAME + VITE_AUTH_PASSWORD
+# are non-empty at build time, the SPA shows a login page and only loads the
+# app after the credentials match. Empty = open access.
+ARG VITE_AUTH_USERNAME=""
+ARG VITE_AUTH_PASSWORD=""
 ENV VITE_API_BASE=${VITE_API_BASE}
 ENV VITE_WS_BASE=${VITE_WS_BASE}
+ENV VITE_AUTH_USERNAME=${VITE_AUTH_USERNAME}
+ENV VITE_AUTH_PASSWORD=${VITE_AUTH_PASSWORD}
 
 RUN npm run build
 
 
 FROM nginx:1.27-alpine AS runtime
 
-# ``apache2-utils`` provides ``htpasswd`` which the entrypoint helper uses to
-# generate the BASIC_AUTH credentials file at container start.
-RUN apk add --no-cache curl apache2-utils \
+RUN apk add --no-cache curl \
     && rm /etc/nginx/conf.d/default.conf
 
-# The template is copied into place on every boot by the entrypoint helper so
-# BASIC_AUTH changes are picked up on restart.
-COPY nginx.conf /etc/nginx/conf.d/default.conf.template
-COPY docker-entrypoint.d/40-voiceslide-auth.sh /docker-entrypoint.d/40-voiceslide-auth.sh
-RUN chmod +x /docker-entrypoint.d/40-voiceslide-auth.sh \
-    && cp /etc/nginx/conf.d/default.conf.template /etc/nginx/conf.d/default.conf
-
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 80

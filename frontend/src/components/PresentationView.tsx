@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft, Download, LogOut } from "lucide-react";
 import { AgentCursor } from "./AgentCursor";
 import { AutoFitSlide } from "./AutoFitSlide";
 import { Controls } from "./Controls";
@@ -7,6 +7,7 @@ import { SlideView } from "./SlideView";
 import { TranscriptPanel } from "./TranscriptPanel";
 import { useRealtimeSession } from "../hooks/useRealtimeSession";
 import { usePresentationStore } from "../store/usePresentationStore";
+import { AUTH_ENABLED, useAuthStore } from "../store/useAuthStore";
 import { deckPdfUrl } from "../lib/api";
 
 export function PresentationView() {
@@ -22,6 +23,7 @@ export function PresentationView() {
   const reset = usePresentationStore((s) => s.reset);
 
   const session = useRealtimeSession(deck?.id ?? null);
+  const logout = useAuthStore((s) => s.logout);
 
   const slideRef = useRef<HTMLDivElement | null>(null);
 
@@ -99,15 +101,31 @@ export function PresentationView() {
             {deck.topic}
           </span>
         </div>
-        <a
-          href={deckPdfUrl(deck.id)}
-          download
-          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-ink-200 bg-white text-xs font-medium text-ink-700 hover:border-ink-900 hover:text-ink-950 transition-colors"
-          aria-label="Download deck as PDF"
-        >
-          <Download size={13} />
-          <span>PDF</span>
-        </a>
+        <div className="flex items-center gap-2">
+          <a
+            href={deckPdfUrl(deck.id)}
+            download
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-ink-200 bg-white text-xs font-medium text-ink-700 hover:border-ink-900 hover:text-ink-950 transition-colors"
+            aria-label="Download deck as PDF"
+          >
+            <Download size={13} />
+            <span>PDF</span>
+          </a>
+          {AUTH_ENABLED && (
+            <button
+              type="button"
+              onClick={() => {
+                session.stop();
+                logout();
+              }}
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-ink-200 bg-white text-xs font-medium text-ink-700 hover:border-ink-900 hover:text-ink-950 transition-colors"
+              aria-label="Sign out"
+            >
+              <LogOut size={13} />
+              <span>Sign out</span>
+            </button>
+          )}
+        </div>
       </header>
 
       <main className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-[1fr_320px]">
